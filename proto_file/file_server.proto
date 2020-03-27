@@ -1,0 +1,28 @@
+syntax = "proto3";  //protobuf3协议
+package proto_file;
+
+message UploadFileRequsest {
+    int64 Id = 1;
+    bytes FileContent = 2;
+    string FileType = 3;
+}
+
+message UploadFileResponse {
+    string status = 1;
+}
+
+message DownloadFileRequest {
+    int64 Id = 1;
+    string FileType = 2;
+}
+
+message DownloadFileResponse {
+    bytes FileContent = 2;
+    string status = 255;
+
+}
+
+service FileServer {
+    rpc UploadFile(UploadFileRequsest) returns (UploadFileResponse);
+    rpc DownloadFile(DownloadFileRequest) returns (DownloadFileResponse);
+}
