@@ -1,13 +1,14 @@
 package main
 
 import (
-	"context"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/gy1229/file_server/proto_file"
 	"google.golang.org/grpc"
 	"io/ioutil"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"runtime"
 )
@@ -30,42 +31,32 @@ func main() {
 	s := grpc.NewServer()
 	proto_file.RegisterFileServerServer(s, &Server{})
 	log.Println("rpc服务已经开启")
+	go HttpServer()
 	s.Serve(listen)
 }
-func WriteWithIoutil(name string, content []byte) {
-	name = "static/img/" + name
-	if ioutil.WriteFile(name, content, 0644) == nil {
-		fmt.Println("写入文件成功:", name)
-	}
-}
-func (s *Server) UploadFile(ctx context.Context, req *proto_file.UploadFileRequsest) (*proto_file.UploadFileResponse, error) {
-	fileName := fmt.Sprintf("%d.%s", req.Id, req.FileType)
-	WriteWithIoutil(fileName, req.FileContent)
-	//if req.FileType == "img" || req.FileType == "png" || req.FileType == "jpeg"{
-	//	WriteWithIoutil(fileName, req.FileContent)
-	//}
-	return &proto_file.UploadFileResponse{
-		Status:               "success",
-	}, nil
+
+func HttpServer() {
+	r := gin.Default()
+	r.GET("/img/:name", DownLoadImage)
+	r.Run(":50002")
 }
 
-func(s *Server) DownloadFile(ctx context.Context, req *proto_file.DownloadFileRequest) (*proto_file.DownloadFileResponse, error) {
-	fileName := fmt.Sprintf("%d.%s", req.Id, req.FileType)
-	if req.FileType == "png" {
-		fileName = "static/img/" + fileName
-	}
-
-	// todo 其他类型再确定
+func DownLoadImage(c *gin.Context) {
+	name := c.Param("name")
+	fileName := fmt.Sprintf("static/img/%s", name)
 	file, err := os.Open(fileName)
 	if err != nil {
-		return nil, err
+		c.JSON(http.StatusOK, gin.H{
+			"error": "cant find file",
+		})
+		return
 	}
 	fileByte, err := ioutil.ReadAll(file)
 	if err != nil {
-		return nil, err
+		c.JSON(http.StatusOK, gin.H{
+			"error": "cant find file",
+		})
+		return
 	}
-	return &proto_file.DownloadFileResponse{
-		FileContent:          fileByte,
-		Status:               "success",
-	}, nil
+	c.Writer.Write(fileByte)
 }
